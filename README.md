@@ -18,7 +18,14 @@ There's no sign-up page on purpose. To grant someone access:
 1. Create their Supabase Auth user directly in the Supabase dashboard
    (Authentication → Users → Add user) on the **quiroflow** project — this
    panel doesn't have its own database, it reads that one.
-2. Add their email to `ADMIN_ALLOWED_EMAILS` (comma-separated) and redeploy.
+2. Add their email to `ADMIN_ALLOWED_EMAILS` in Netlify's environment
+   variables, **then trigger a new deploy** (Deploys → Trigger deploy, or
+   just push a commit). Netlify Functions read env vars as of whatever
+   deploy is currently live, not live per-request — changing the value in
+   the dashboard does nothing to the already-running function until the
+   next deploy picks it up. Confirmed the hard way: signing in with the
+   *correct* email still 403s ("Not authorized for the admin panel") if the
+   var was added after the last deploy.
 
 ## 1. Install
 
