@@ -38,5 +38,18 @@ export default defineNuxtConfig({
     // Server-only -- comma-separated emails allowed to use this panel.
     // Never exposed to the client (no `public.` prefix).
     adminAllowedEmails: '',
+    // QuiroFlow's OWN billing of clinic accounts (Checkout Session creation
+    // lives here, not the main app -- see server/utils/platformBillingStripe.ts).
+    // Same account/keys as the main repo's stripePlatformBillingSecretKey --
+    // the main app's webhook and this panel's Checkout creation are two
+    // halves of one integration, so they must point at the same Stripe
+    // account or subscriptions created here will never sync back.
+    stripePlatformBillingSecretKey: '',
+    public: {
+      // Where a customer lands after paying (or backing out of) a Checkout
+      // Session created from this panel -- the main app, not this admin
+      // panel itself, since the customer is clinic staff, not us.
+      mainAppUrl: 'https://app.quiroflow.com',
+    },
   },
 })

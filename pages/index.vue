@@ -68,6 +68,60 @@ async function signOut() {
   await supabase.auth.signOut()
   navigateTo('/login')
 }
+
+// "Start subscription" -- there's no public self-serve signup-with-payment
+// flow yet, so this is how a subscription actually gets started: pick a
+// plan for an account here, get back a Stripe Checkout link, send it to the
+// customer. Paying it is what makes the main app's webhook create the real
+// subscription row.
+const checkoutAccount = ref<OverviewAccount | null>(null)
+const checkoutPlanId = ref('')
+const checkoutInterval = ref<'monthly' | 'annual'>('monthly')
+const checkoutExtra = ref(0)
+const checkoutUrl = ref('')
+const checkoutError = ref('')
+const checkoutLoading = ref(false)
+
+function openCheckout(account: OverviewAccount) {
+  checkoutAccount.value = account
+  checkoutPlanId.value = account.planId ?? overview.value?.plans[0]?.id ?? ''
+  checkoutInterval.value = (account.billingInterval as 'monthly' | 'annual') ?? 'monthly'
+  checkoutExtra.value = account.extraProfessionals
+  checkoutUrl.value = ''
+  checkoutError.value = ''
+}
+function closeCheckout() {
+  checkoutAccount.value = null
+}
+
+async function createCheckoutLink() {
+  if (!checkoutAccount.value) return
+  checkoutLoading.value = true
+  checkoutError.value = ''
+  checkoutUrl.value = ''
+  try {
+    const res = await $fetch<{ url: string }>('/api/create-checkout', {
+      method: 'POST',
+      body: {
+        accountId: checkoutAccount.value.id,
+        planId: checkoutPlanId.value,
+        billingInterval: checkoutInterval.value,
+        extraProfessionals: checkoutExtra.value,
+      },
+    })
+    checkoutUrl.value = res.url
+  } catch (err: any) {
+    checkoutError.value = err?.data?.statusMessage ?? err?.message ?? 'Failed to create the Checkout link.'
+  }
+  checkoutLoading.value = false
+}
+
+const copied = ref(false)
+async function copyCheckoutUrl() {
+  await navigator.clipboard.writeText(checkoutUrl.value)
+  copied.value = true
+  setTimeout(() => (copied.value = false), 1500)
+}
 </script>
 
 <template>
@@ -119,6 +173,7 @@ async function signOut() {
                 <th class="px-4 py-2 font-medium">Billing</th>
                 <th class="px-4 py-2 font-medium">Trial ends</th>
                 <th class="px-4 py-2 font-medium">Since</th>
+                <th class="px-4 py-2 font-medium"></th>
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-100">
@@ -139,14 +194,63 @@ async function signOut() {
                 <td class="px-4 py-2.5 text-gray-700">{{ a.billingInterval ?? '—' }}</td>
                 <td class="px-4 py-2.5 text-gray-700">{{ dateStr(a.trialEndsAt) }}</td>
                 <td class="px-4 py-2.5 text-gray-700">{{ dateStr(a.createdAt) }}</td>
+                <td class="px-4 py-2.5 text-right">
+                  <button type="button" class="text-xs font-medium text-indigo-600 hover:text-indigo-800" @click="openCheckout(a)">Start subscription</button>
+                </td>
               </tr>
               <tr v-if="overview.accounts.length === 0">
-                <td colspan="6" class="px-4 py-6 text-center text-gray-400">No accounts yet.</td>
+                <td colspan="7" class="px-4 py-6 text-center text-gray-400">No accounts yet.</td>
               </tr>
             </tbody>
           </table>
         </div>
       </template>
     </main>
+
+    <div v-if="checkoutAccount" class="fixed inset-0 z-10 flex items-center justify-center bg-black/30 px-4" @click.self="closeCheckout">
+      <div class="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
+        <h2 class="text-sm font-semibold text-gray-900">Start subscription — {{ checkoutAccount.name }}</h2>
+        <p class="mt-1 text-xs text-gray-500">Creates a Stripe Checkout link. Send it to the customer; once they pay, the subscription syncs here automatically.</p>
+
+        <div class="mt-4 space-y-3">
+          <label class="block text-xs font-medium text-gray-700">
+            Plan
+            <select v-model="checkoutPlanId" class="mt-1 block w-full rounded-md border-gray-300 text-sm">
+              <option v-for="p in overview?.plans ?? []" :key="p.id" :value="p.id">{{ p.name }}</option>
+            </select>
+          </label>
+          <label class="block text-xs font-medium text-gray-700">
+            Billing interval
+            <select v-model="checkoutInterval" class="mt-1 block w-full rounded-md border-gray-300 text-sm">
+              <option value="monthly">Monthly</option>
+              <option value="annual">Annual</option>
+            </select>
+          </label>
+          <label class="block text-xs font-medium text-gray-700">
+            Extra professionals (beyond the plan's included seats)
+            <input v-model.number="checkoutExtra" type="number" min="0" class="mt-1 block w-full rounded-md border-gray-300 text-sm" />
+          </label>
+        </div>
+
+        <div v-if="checkoutError" class="mt-3 rounded-md border border-red-200 bg-red-50 p-2 text-xs text-red-700">{{ checkoutError }}</div>
+
+        <div v-if="checkoutUrl" class="mt-3 rounded-md border border-gray-200 bg-gray-50 p-2">
+          <p class="break-all text-xs text-gray-700">{{ checkoutUrl }}</p>
+          <button type="button" class="mt-1 text-xs font-medium text-indigo-600 hover:text-indigo-800" @click="copyCheckoutUrl">{{ copied ? 'Copied!' : 'Copy link' }}</button>
+        </div>
+
+        <div class="mt-5 flex justify-end gap-2">
+          <button type="button" class="rounded-md px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100" @click="closeCheckout">Close</button>
+          <button
+            type="button"
+            class="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+            :disabled="checkoutLoading || !checkoutPlanId"
+            @click="createCheckoutLink"
+          >
+            {{ checkoutLoading ? 'Creating…' : 'Create link' }}
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>

@@ -11,6 +11,10 @@ export interface Plan {
   included_clinics: number | null
   extra_professional_price_cents: number | null
   sort_order: number
+  stripe_monthly_price_id: string | null
+  stripe_annual_price_id: string | null
+  stripe_extra_professional_monthly_price_id: string | null
+  stripe_extra_professional_annual_price_id: string | null
 }
 
 export interface Subscription {
