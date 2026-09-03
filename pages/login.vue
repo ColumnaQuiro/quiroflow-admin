@@ -4,10 +4,20 @@
 // directly in the Supabase dashboard (Authentication -> Users -> Add user),
 // then add their email to ADMIN_ALLOWED_EMAILS.
 const supabase = useSupabaseClient()
+const route = useRoute()
 const email = ref('')
 const password = ref('')
-const error = ref('')
 const loading = ref(false)
+
+// ?error=unauthorized|signed-out arrives from pages/index.vue's load()
+// bouncing a signed-in-but-not-allowlisted (or session-expired) user back
+// here. A fresh sign-in attempt below overwrites this the moment the user
+// tries again, same as any other login error.
+const ERROR_MESSAGES: Record<string, string> = {
+  unauthorized: "You're signed in, but this account isn't authorized for the admin panel.",
+  'signed-out': 'Your session expired. Please sign in again.',
+}
+const error = ref(typeof route.query.error === 'string' ? (ERROR_MESSAGES[route.query.error] ?? '') : '')
 
 async function signIn() {
   error.value = ''

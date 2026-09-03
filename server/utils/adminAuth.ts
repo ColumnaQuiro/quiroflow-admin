@@ -20,7 +20,7 @@ export async function requireAdmin(event: H3Event) {
     .split(',')
     .map((e) => e.trim().toLowerCase())
     .filter(Boolean)
-  if (!allowed.includes(user.email.toLowerCase())) {
+  if (!allowed.includes(user.email.trim().toLowerCase())) {
     throw createError({ statusCode: 403, statusMessage: 'Not authorized for the admin panel' })
   }
 

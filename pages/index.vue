@@ -33,6 +33,16 @@ async function load() {
   try {
     overview.value = await $fetch<Overview>('/api/overview')
   } catch (err: any) {
+    const status = err?.response?.status ?? err?.statusCode
+    // A signed-in-but-not-allowlisted user has no reason to sit on a
+    // half-loaded dashboard staring at an inline error -- bounce them back
+    // to the login screen (signed out, so a stale session doesn't just
+    // 403 again on every reload) with the reason attached.
+    if (status === 401 || status === 403) {
+      await supabase.auth.signOut()
+      await navigateTo(`/login?error=${status === 401 ? 'signed-out' : 'unauthorized'}`)
+      return
+    }
     error.value = err?.data?.statusMessage ?? err?.message ?? 'Failed to load.'
   }
   loading.value = false
