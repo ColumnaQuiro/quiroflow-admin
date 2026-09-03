@@ -1,6 +1,20 @@
 export default defineNuxtConfig({
   compatibilityDate: '2026-01-01',
   devtools: { enabled: false },
+  app: {
+    head: {
+      title: 'QuiroFlow Admin',
+      // A private, owner-only billing panel has even less reason to be
+      // indexed than the main app itself (same tag there, see its own
+      // nuxt.config.ts) -- this isn't the actual access control (that's
+      // auth + the allowlist), just keeps it out of search results.
+      meta: [{ name: 'robots', content: 'noindex, nofollow' }],
+      link: [
+        { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' },
+        { rel: 'alternate icon', href: '/favicon.ico' },
+      ],
+    },
+  },
   nitro: {
     preset: 'netlify',
   },

@@ -73,7 +73,10 @@ async function signOut() {
 <template>
   <div class="min-h-screen bg-gray-50">
     <header class="flex h-14 items-center justify-between border-b border-gray-200 bg-white px-6">
-      <h1 class="text-base font-semibold text-gray-900">QuiroFlow Admin</h1>
+      <div class="flex items-center gap-2">
+        <img src="/logo/quiroflow-mark.svg" alt="" class="h-6 w-6" />
+        <h1 class="text-base font-semibold text-gray-900">QuiroFlow Admin</h1>
+      </div>
       <button type="button" class="text-sm text-gray-500 hover:text-gray-700" @click="signOut">Sign out</button>
     </header>
 

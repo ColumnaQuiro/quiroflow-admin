@@ -35,7 +35,10 @@ async function signIn() {
 <template>
   <div class="flex min-h-screen items-center justify-center bg-gray-50 px-4">
     <form class="w-full max-w-sm space-y-4 rounded-lg border border-gray-200 bg-white p-6 shadow-sm" @submit.prevent="signIn">
-      <h1 class="text-lg font-semibold text-gray-900">QuiroFlow Admin</h1>
+      <div class="flex items-center gap-2">
+        <img src="/logo/quiroflow-mark.svg" alt="" class="h-7 w-7" />
+        <h1 class="text-lg font-semibold text-gray-900">QuiroFlow Admin</h1>
+      </div>
       <div>
         <label class="block text-sm font-medium text-gray-600">Email</label>
         <input v-model="email" type="email" required autocomplete="username" class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none" />
