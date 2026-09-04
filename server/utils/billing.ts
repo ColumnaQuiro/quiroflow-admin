@@ -26,6 +26,10 @@ export interface Subscription {
   extra_professionals: number
   trial_ends_at: string | null
   comped: boolean
+  stripe_customer_id: string | null
+  stripe_subscription_id: string | null
+  created_at: string
+  updated_at: string
 }
 
 // annual_price_cents is already the monthly-equivalent rate under annual

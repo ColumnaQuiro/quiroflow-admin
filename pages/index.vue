@@ -12,6 +12,7 @@ interface OverviewAccount {
   comped: boolean
   extraProfessionals: number
   monthlyCents: number | null
+  stripeCustomerId: string | null
 }
 interface Overview {
   totalAccounts: number
@@ -63,6 +64,34 @@ const STATUS_TONE: Record<string, string> = {
   locked: 'bg-red-100 text-red-700',
   canceled: 'bg-gray-100 text-gray-500',
 }
+
+// Search + filter + sort -- all client-side over the already-loaded list.
+// Fine at this scale (a handful of accounts); revisit with server-side
+// pagination once that stops being true.
+const search = ref('')
+const statusFilter = ref('')
+const sortBy = ref<'created_desc' | 'trial_asc' | 'name_asc'>('created_desc')
+
+const filteredAccounts = computed(() => {
+  const accounts = overview.value?.accounts ?? []
+  const q = search.value.trim().toLowerCase()
+  let list = accounts.filter((a) => {
+    if (q && !a.name.toLowerCase().includes(q) && !a.slug.toLowerCase().includes(q)) return false
+    if (statusFilter.value && a.status !== statusFilter.value) return false
+    return true
+  })
+  list = [...list].sort((a, b) => {
+    if (sortBy.value === 'name_asc') return a.name.localeCompare(b.name)
+    if (sortBy.value === 'trial_asc') {
+      if (!a.trialEndsAt && !b.trialEndsAt) return 0
+      if (!a.trialEndsAt) return 1
+      if (!b.trialEndsAt) return -1
+      return a.trialEndsAt.localeCompare(b.trialEndsAt)
+    }
+    return b.createdAt.localeCompare(a.createdAt)
+  })
+  return list
+})
 
 async function signOut() {
   await supabase.auth.signOut()
@@ -163,7 +192,24 @@ async function copyCheckoutUrl() {
           </div>
         </div>
 
-        <div class="mt-8 overflow-hidden rounded-lg border border-gray-200 bg-white">
+        <div class="mt-8 flex flex-wrap items-center gap-2">
+          <input v-model="search" type="search" placeholder="Search by name or slug…" class="w-64 rounded-md border-gray-300 text-sm" />
+          <select v-model="statusFilter" class="rounded-md border-gray-300 text-sm">
+            <option value="">All statuses</option>
+            <option value="trialing">Trialing</option>
+            <option value="active">Active</option>
+            <option value="past_due">Past due</option>
+            <option value="locked">Locked</option>
+            <option value="canceled">Canceled</option>
+          </select>
+          <select v-model="sortBy" class="rounded-md border-gray-300 text-sm">
+            <option value="created_desc">Newest first</option>
+            <option value="trial_asc">Trial ending soonest</option>
+            <option value="name_asc">Name A-Z</option>
+          </select>
+        </div>
+
+        <div class="mt-3 overflow-hidden rounded-lg border border-gray-200 bg-white">
           <table class="w-full text-sm">
             <thead class="border-b border-gray-200 bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-400">
               <tr>
@@ -177,10 +223,13 @@ async function copyCheckoutUrl() {
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-100">
-              <tr v-for="a in overview.accounts" :key="a.id">
+              <tr v-for="a in filteredAccounts" :key="a.id">
                 <td class="px-4 py-2.5">
-                  <p class="font-medium text-gray-900">{{ a.name }}</p>
-                  <p class="text-xs text-gray-400">{{ a.slug }}</p>
+                  <NuxtLink :to="`/accounts/${a.id}`" class="font-medium text-gray-900 hover:text-indigo-600">{{ a.name }}</NuxtLink>
+                  <p class="text-xs text-gray-400">
+                    {{ a.slug }}
+                    <a v-if="a.stripeCustomerId" :href="`https://dashboard.stripe.com/test/customers/${a.stripeCustomerId}`" target="_blank" rel="noopener" class="ml-1 text-indigo-500 hover:text-indigo-700">Stripe &rarr;</a>
+                  </p>
                 </td>
                 <td class="px-4 py-2.5 text-gray-700">
                   {{ a.planName ?? '—' }}
@@ -198,8 +247,8 @@ async function copyCheckoutUrl() {
                   <button type="button" class="text-xs font-medium text-indigo-600 hover:text-indigo-800" @click="openCheckout(a)">Start subscription</button>
                 </td>
               </tr>
-              <tr v-if="overview.accounts.length === 0">
-                <td colspan="7" class="px-4 py-6 text-center text-gray-400">No accounts yet.</td>
+              <tr v-if="filteredAccounts.length === 0">
+                <td colspan="7" class="px-4 py-6 text-center text-gray-400">{{ overview.accounts.length === 0 ? 'No accounts yet.' : 'No accounts match.' }}</td>
               </tr>
             </tbody>
           </table>

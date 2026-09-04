@@ -14,7 +14,9 @@ export default defineEventHandler(async (event) => {
   const [{ data: accounts, error: accountsError }, { data: plans, error: plansError }] = await Promise.all([
     supabase
       .from('accounts')
-      .select('id, name, slug, created_at, subscriptions(id, account_id, plan_id, billing_interval, status, extra_professionals, trial_ends_at, comped)')
+      .select(
+        'id, name, slug, created_at, subscriptions(id, account_id, plan_id, billing_interval, status, extra_professionals, trial_ends_at, comped, stripe_customer_id, stripe_subscription_id, created_at, updated_at)',
+      )
       .order('created_at', { ascending: false }),
     supabase.from('plans').select('id, name, monthly_price_cents, annual_price_cents, included_professionals, included_clinics, extra_professional_price_cents, sort_order').order('sort_order'),
   ])
@@ -39,6 +41,7 @@ export default defineEventHandler(async (event) => {
       comped: sub?.comped ?? false,
       extraProfessionals: sub?.extra_professionals ?? 0,
       monthlyCents: sub && plan ? monthlyEquivalentCents(sub, plan) : null,
+      stripeCustomerId: sub?.stripe_customer_id ?? null,
     }
   })
 
